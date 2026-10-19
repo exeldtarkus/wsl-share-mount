@@ -6,3 +6,4 @@ tsconfig.json
 scripts/**
 docs/**
 .gitignore
+deployment/**
