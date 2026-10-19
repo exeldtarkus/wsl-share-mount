@@ -1,0 +1,120 @@
+{
+  "name": "wsl-share-mount",
+  "displayName": "WSL Share Mount",
+  "description": "Mount Windows SMB shares into WSL (drvfs) using the current Windows login, without storing passwords.",
+  "version": "0.1.0",
+  "publisher": "exeltarkus",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/exeldtarkus/wsl-share-mount.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "wslShareMount.menu",
+        "title": "Mount / Unmount Share",
+        "category": "WSL Share Mount"
+      },
+      {
+        "command": "wslShareMount.mount",
+        "title": "Mount Share",
+        "category": "WSL Share Mount"
+      },
+      {
+        "command": "wslShareMount.unmount",
+        "title": "Unmount Share",
+        "category": "WSL Share Mount"
+      },
+      {
+        "command": "wslShareMount.status",
+        "title": "Show Status",
+        "category": "WSL Share Mount"
+      },
+      {
+        "command": "wslShareMount.openSettings",
+        "title": "Open Settings",
+        "category": "WSL Share Mount"
+      }
+    ],
+    "configuration": {
+      "title": "WSL Share Mount",
+      "properties": {
+        "wslShareMount.shares": {
+          "type": "array",
+          "default": [],
+          "scope": "machine",
+          "markdownDescription": "Shares to mount. Example: `{ \"name\": \"UAT\", \"share\": \"\\\\\\\\server\\\\share\\\\folder\", \"mountPoint\": \"/mnt/share\" }` (backslashes doubled in JSON).",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "share",
+              "mountPoint"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Label shown in the picker."
+              },
+              "share": {
+                "type": "string",
+                "pattern": "^\\\\\\\\[^\\\\]+\\\\",
+                "description": "UNC path, e.g. \\\\server\\share\\folder."
+              },
+              "mountPoint": {
+                "type": "string",
+                "pattern": "^/",
+                "description": "Absolute WSL path, e.g. /mnt/share."
+              },
+              "auth": {
+                "type": "string",
+                "enum": [
+                  "windows",
+                  "credentials"
+                ],
+                "default": "windows",
+                "enumDescriptions": [
+                  "Current Windows login (drvfs). No password needed.",
+                  "Username + password (cifs, needs cifs-utils). Password is asked on mount and never stored."
+                ],
+                "description": "How to authenticate to the share."
+              },
+              "username": {
+                "type": "string",
+                "description": "Only for auth=credentials, e.g. DOMAIN\\user. Asked on mount when empty."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test out/test/*.test.js",
+    "package": "vsce package --skip-license",
+    "install:local": "node scripts/install-local.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^4.0.0",
+    "typescript": "^5.4.0"
+  }
+}
