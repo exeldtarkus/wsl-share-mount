@@ -14,7 +14,8 @@ test('render escapes user values and shows status + matching button', () => {
 
   const on = render([{ share, mounted: true }], 'csp');
   assert.ok(on.includes('Linked') && on.includes('data-cmd="unmount"') && !on.includes('data-cmd="mount"'));
-  assert.match(on, /data-cmd="edit"[^>]*disabled/);
+  assert.ok(!on.includes('data-cmd="edit"') && on.includes('Unmount to edit or remove'));
+  assert.ok(off.includes('data-cmd="edit"') && off.includes('data-cmd="remove"'));
 });
 
 test('render shows empty state with add button', () => {
