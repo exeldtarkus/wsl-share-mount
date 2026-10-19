@@ -3,7 +3,9 @@ import * as assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { credentialsContent, isNonEmptyDir, isValidShare, mountArgs, run, withCredentialsFile } from '../mount';
+import {
+  credentialsContent, isNonEmptyDir, isValidShare, isValidUnc, mountArgs, normalizeUnc, run, withCredentialsFile,
+} from '../mount';
 
 const share = { name: 'UAT', share: '\\\\intra.example\\share\\Ops&IT\\UAT', mountPoint: '/mnt/share' };
 
@@ -13,6 +15,14 @@ test('isValidShare', () => {
   assert.ok(!isValidShare({ ...share, share: 'C:\\share' }));
   assert.ok(!isValidShare({ ...share, share: '\\\\server' }));
   assert.ok(!isValidShare({ ...share, mountPoint: 'mnt/share' }));
+});
+
+test('normalizeUnc accepts forward slashes and trailing separators', () => {
+  assert.equal(normalizeUnc(' //server/share/UAT/ '), '\\\\server\\share\\UAT');
+  assert.equal(normalizeUnc('\\\\server\\share\\'), '\\\\server\\share');
+  assert.ok(isValidUnc(normalizeUnc('//server/share')));
+  assert.ok(!isValidUnc(normalizeUnc('//server/')));
+  assert.ok(!isValidUnc('C:\\share'));
 });
 
 test('mountArgs passes UNC path as a single argument', () => {

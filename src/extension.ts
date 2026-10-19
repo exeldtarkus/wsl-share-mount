@@ -12,11 +12,17 @@ import {
   sudo,
   withCredentialsFile,
 } from './mount';
+import { addShare, editShare, removeShare } from './manage';
 
 let statusBar: vscode.StatusBarItem;
 let log: vscode.LogOutputChannel;
+let state: vscode.Memento;
+
+// mountPoint yang ter-mount saat terakhir dicek; dipakai untuk mendeteksi mount yang hilang setelah WSL restart.
+const MOUNTED_KEY = 'mountedPoints';
 
 export function activate(context: vscode.ExtensionContext): void {
+  state = context.globalState;
   log = vscode.window.createOutputChannel('WSL Share Mount', { log: true });
   statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
   statusBar.command = 'wslShareMount.menu';
@@ -33,12 +39,34 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('wslShareMount.mount', () => guarded(pickAndMount)),
     vscode.commands.registerCommand('wslShareMount.unmount', () => guarded(pickAndUnmount)),
     vscode.commands.registerCommand('wslShareMount.status', () => guarded(showStatus)),
+    vscode.commands.registerCommand('wslShareMount.addShare', () => guarded(addShare)),
+    vscode.commands.registerCommand('wslShareMount.editShare', () => guarded(() => editShare(shares()))),
+    vscode.commands.registerCommand('wslShareMount.removeShare', () => guarded(() => removeShare(shares()))),
     vscode.commands.registerCommand('wslShareMount.openSettings', openSettings),
     vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('wslShareMount') && refresh()),
     // share bisa di-mount/unmount dari terminal; cek ulang saat window kembali fokus.
     vscode.window.onDidChangeWindowState((s) => s.focused && refresh()),
   );
+  // dibaca sebelum refresh() menimpa MOUNTED_KEY dengan kondisi sekarang.
+  guarded(checkDisconnected);
+}
+
+/** Mount tidak persist (tidak ditulis ke /etc/fstab), jadi `wsl --shutdown` memutus semuanya; tawarkan mount ulang. */
+async function checkDisconnected(): Promise<void> {
+  const before = state.get<string[]>(MOUNTED_KEY, []);
+  const lost = (await withState()).filter((s) => !s.mounted && before.includes(s.share.mountPoint)).map((s) => s.share);
+  if (!lost.length) {
+    return;
+  }
+  log.info(`Disconnected since last session: ${lost.map((s) => s.mountPoint).join(', ')}`);
   refresh();
+  const again = await vscode.window.showWarningMessage(
+    `WSL Share Mount: ${lost.map((s) => s.name).join(', ')} disconnected (WSL was restarted?).`,
+    'Mount again',
+  );
+  if (again) {
+    await runAll(lost, mount);
+  }
 }
 
 export function deactivate(): void {}
@@ -72,11 +100,32 @@ async function withState(): Promise<{ share: Share; mounted: boolean }[]> {
 async function refresh(): Promise<void> {
   try {
     const list = await withState();
-    const up = list.filter((s) => s.mounted).length;
-    statusBar.text = `$(${up ? 'server-environment' : 'server'}) ${up}/${list.length}`;
-    statusBar.tooltip = list.length
-      ? list.map((s) => `${s.mounted ? '●' : '○'} ${s.share.name}: ${s.share.share} → ${s.share.mountPoint}`).join('\n')
-      : 'No shares configured. Click to add one in settings.';
+    const mounted = list.filter((s) => s.mounted);
+    await state.update(MOUNTED_KEY, mounted.map((s) => s.share.mountPoint));
+    const up = mounted.length;
+    const all = list.length;
+    statusBar.text = !all
+      ? '$(server) WSL Share: none'
+      : up === 0
+        ? `$(server) WSL Share: 0/${all} mounted`
+        : `$(server-environment) WSL Share: ${up === 1 ? mounted[0].share.name : `${up}/${all} mounted`}`;
+    // hijau = semua ter-mount, kuning = sebagian, default = belum ada yang ter-mount.
+    statusBar.color = !up ? undefined : new vscode.ThemeColor(up === all ? 'charts.green' : 'charts.yellow');
+    const md = new vscode.MarkdownString(
+      all
+        ? `**WSL Share Mount — ${up}/${all} mounted**\n\n` +
+            list
+              .map(
+                (s) =>
+                  `${s.mounted ? '$(pass-filled) MOUNTED' : '$(circle-large-outline) NOT MOUNTED'} **${s.share.name}**` +
+                  ` \`${s.share.mountPoint}\` ← \`${s.share.share}\``,
+              )
+              .join('\n\n') +
+            '\n\nClick to mount / unmount.'
+        : 'No shares configured. Click to add one.',
+      true,
+    );
+    statusBar.tooltip = md;
     statusBar.show();
   } catch (e) {
     log.error('refresh - failed to read mount state', e);
@@ -97,27 +146,49 @@ async function guarded(fn: () => Promise<void>): Promise<void> {
   }
 }
 
+interface ActionButton extends vscode.QuickInputButton {
+  run: () => Promise<void>;
+}
+
 async function menu(): Promise<void> {
   const list = await withState();
   if (!list.length) {
-    return openSettings();
+    return addShare();
   }
-  const picked = await vscode.window.showQuickPick(
-    list.map((s) => ({
-      label: `${s.mounted ? '$(debug-disconnect) Unmount' : '$(plug) Mount'} ${s.share.name}`,
-      description: s.share.mountPoint,
-      detail: s.share.share,
-      ...s,
-    })),
-    { placeHolder: 'Select share(s) to mount / unmount', canPickMany: true },
-  );
-  await runAll(picked ?? [], (s, ask) => (s.mounted ? unmount(s.share, ask) : mount(s.share, ask)));
+  const buttons: ActionButton[] = [
+    { iconPath: new vscode.ThemeIcon('add'), tooltip: 'Add share', run: addShare },
+    { iconPath: new vscode.ThemeIcon('edit'), tooltip: 'Edit share', run: () => editShare(shares()) },
+    { iconPath: new vscode.ThemeIcon('trash'), tooltip: 'Remove share', run: () => removeShare(shares()) },
+    { iconPath: new vscode.ThemeIcon('pulse'), tooltip: 'Show status', run: showStatus },
+  ];
+  const qp = vscode.window.createQuickPick<vscode.QuickPickItem & (typeof list)[number]>();
+  qp.title = 'WSL Share Mount';
+  qp.placeholder = 'Select share(s) to mount / unmount, or use the buttons to add / edit / remove';
+  qp.canSelectMany = true;
+  qp.buttons = buttons;
+  qp.items = list.map((s) => ({
+    label: `${s.mounted ? '$(debug-disconnect) Unmount' : '$(plug) Mount'} ${s.share.name}`,
+    description: s.share.mountPoint,
+    detail: s.share.share,
+    ...s,
+  }));
+  const choice = await new Promise<{ button?: ActionButton; picked?: (typeof list)[number][] }>((resolve) => {
+    qp.onDidTriggerButton((button) => resolve({ button: button as ActionButton }));
+    qp.onDidAccept(() => resolve({ picked: [...qp.selectedItems] }));
+    qp.onDidHide(() => resolve({}));
+    qp.show();
+  });
+  qp.dispose();
+  if (choice.button) {
+    return choice.button.run();
+  }
+  await runAll(choice.picked ?? [], (s, ask) => (s.mounted ? unmount(s.share, ask) : mount(s.share, ask)));
 }
 
 async function showStatus(): Promise<void> {
   const list = await withState();
   if (!list.length) {
-    return openSettings();
+    return addShare();
   }
   const items = await Promise.all(
     list.map(async (s) => ({

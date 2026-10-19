@@ -36,8 +36,13 @@ export function run(cmd: string, args: string[], input?: string): Promise<Result
   });
 }
 
+export const isValidUnc = (unc: string) => /^\\\\[^\\]+\\[^\\]/.test(unc);
+
+/** `//server/share` atau `\\server\share\` dari input user jadi `\\server\share`. */
+export const normalizeUnc = (input: string) => input.trim().replace(/\//g, '\\').replace(/\\+$/, '');
+
 export function isValidShare(s: Partial<Share>): s is Share {
-  return !!s.name && /^\\\\[^\\]+\\/.test(s.share ?? '') && (s.mountPoint ?? '').startsWith('/');
+  return !!s.name && isValidUnc(s.share ?? '') && (s.mountPoint ?? '').startsWith('/');
 }
 
 export async function isMounted(mountPoint: string): Promise<boolean> {

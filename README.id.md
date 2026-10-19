@@ -10,6 +10,18 @@ Extension VS Code untuk me-mount share SMB Windows ke WSL, dengan status mount t
 - `sudo` di dalam WSL (dibutuhkan untuk `mount` / `umount`).
 - Untuk share `auth: "credentials"`: `cifs-utils` (`sudo apt install cifs-utils`).
 
+## Memulai
+
+1. Klik ikon server dengan `ter-mount/total` (mis. `0/0`) di status bar. Bila belum ada share yang dikonfigurasi, form **Add share** langsung terbuka.
+2. Isi form (Esc di langkah mana pun membatalkan tanpa menyimpan):
+   1. **(1/4) Nama tampilan**, mis. `UAT`.
+   2. **(2/4) Path share Windows (UNC)**, mis. `\\server\share\UAT`. Garis miring biasa seperti `//server/share/UAT` diterima dan dikonversi; garis miring di akhir dihapus.
+   3. **(3/4) Mount point** di WSL. Default `/mnt/<nama>` (nama huruf kecil, karakter lain jadi `-`). Harus path absolut dan belum dipakai share lain.
+   4. **(4/4) Login**: **Current Windows login** (`windows`) atau **Username + password** (`credentials`). Untuk yang kedua bisa diisi username seperti `CORP\user`; kosongkan agar ditanyakan setiap mount.
+3. Klik status bar lagi dan pilih share tersebut untuk me-mount (pilih lagi nanti untuk unmount).
+
+Title bar menu punya tombol **Add share**, **Edit share**, **Remove share**, dan **Show status**. Aksi yang sama juga tersedia sebagai command (lihat di bawah). Edit atau hapus share ditolak selama share tersebut ter-mount ("Unmount it first"); hapus meminta konfirmasi.
+
 ## Fitur
 
 - **Dua mode autentikasi**:
@@ -19,7 +31,7 @@ Extension VS Code untuk me-mount share SMB Windows ke WSL, dengan status mount t
 - **Ditanya sekali per batch**: saat me-mount beberapa share sekaligus, password sudo dan password tiap share (per username) cukup ditanyakan sekali.
 - **Aman untuk batch**: satu share gagal tidak menghentikan share lain. Membatalkan prompt password akan membatalkan sisa batch.
 - **Cek folder tidak kosong**: me-mount ke folder yang tidak kosong meminta konfirmasi. Isi lokal hanya tertutup (tidak terhapus) selama share ter-mount.
-- **Status bar**: menampilkan `ter-mount/total`; tooltip menampilkan tiap share dengan ● (ter-mount) atau ○ (tidak ter-mount). Klik untuk membuka menu. Diperbarui saat setting berubah dan saat window kembali fokus (mis. setelah mount dari terminal).
+- **Status bar**: menampilkan `ter-mount/total`; tooltip menampilkan tiap share dengan ● (ter-mount) atau ○ (tidak ter-mount). Klik untuk membuka menu (atau form **Add share** bila belum ada share; tooltip-nya lalu berbunyi "No shares configured. Click to add one."). Diperbarui saat setting berubah dan saat window kembali fokus (mis. setelah mount dari terminal).
 
 ## Command
 
@@ -28,12 +40,15 @@ Extension VS Code untuk me-mount share SMB Windows ke WSL, dengan status mount t
 | `WSL Share Mount: Mount / Unmount Share` | Menu semua share; multi-select, tiap share yang dipilih di-toggle |
 | `WSL Share Mount: Mount Share` | Pilih share yang belum ter-mount lalu mount |
 | `WSL Share Mount: Unmount Share` | Pilih share yang ter-mount lalu unmount (multi-select) |
-| `WSL Share Mount: Show Status` | `MOUNTED` / `NOT MOUNTED` per mount point, dengan sumber sebenarnya dari `findmnt` |
-| `WSL Share Mount: Open Settings` | Buka `settings.json` di `wslShareMount.shares` |
+| `WSL Share Mount: Show Status` | `MOUNTED` / `NOT MOUNTED` per mount point, dengan sumber sebenarnya dari `findmnt` (membuka **Add Share** bila belum ada share) |
+| `WSL Share Mount: Add Share` | Form langkah demi langkah untuk menambah share |
+| `WSL Share Mount: Edit Share` | Pilih share lalu ubah lewat form yang sama (ditolak selama ter-mount) |
+| `WSL Share Mount: Remove Share` | Pilih share lalu hapus setelah konfirmasi (ditolak selama ter-mount) |
+| `WSL Share Mount: Open Settings (JSON)` | Opsional/lanjutan: buka `settings.json` di `wslShareMount.shares` |
 
 ## Setting
 
-`wslShareMount.shares` (scope machine) berupa array berisi:
+Share disimpan di `wslShareMount.shares` (scope machine). Form Add / Edit / Remove menulisnya ke setting **user** dan tidak mengubah entry lain (termasuk yang tidak valid). Setting ini berupa array berisi:
 
 | Field | Wajib | Keterangan |
 | --- | --- | --- |
@@ -45,7 +60,9 @@ Extension VS Code untuk me-mount share SMB Windows ke WSL, dengan status mount t
 
 Entry yang tidak valid dan `mountPoint` duplikat diabaikan, dengan peringatan di output channel **WSL Share Mount**.
 
-Contoh:
+### Lanjutan: edit JSON langsung
+
+Setting tetap bisa diedit manual (**Open Settings (JSON)**). Contoh:
 
 ```json
 "wslShareMount.shares": [
