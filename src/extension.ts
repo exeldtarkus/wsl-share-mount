@@ -13,6 +13,7 @@ import {
   withCredentialsFile,
 } from './mount';
 import { addShare, editShare, removeShare } from './manage';
+import { Action, openPanel, updatePanel } from './panel';
 
 let statusBar: vscode.StatusBarItem;
 let log: vscode.LogOutputChannel;
@@ -35,7 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('wslShareMount.menu', () => guarded(menu)),
+    vscode.commands.registerCommand('wslShareMount.menu', () => guarded(showPanel)),
     vscode.commands.registerCommand('wslShareMount.mount', () => guarded(pickAndMount)),
     vscode.commands.registerCommand('wslShareMount.unmount', () => guarded(pickAndUnmount)),
     vscode.commands.registerCommand('wslShareMount.status', () => guarded(showStatus)),
@@ -121,12 +122,13 @@ async function refresh(): Promise<void> {
                   ` \`${s.share.mountPoint}\` ← \`${s.share.share}\``,
               )
               .join('\n\n') +
-            '\n\nClick to mount / unmount.'
+            '\n\nClick to open the share manager.'
         : 'No shares configured. Click to add one.',
       true,
     );
     statusBar.tooltip = md;
     statusBar.show();
+    updatePanel(list);
   } catch (e) {
     log.error('refresh - failed to read mount state', e);
   }
@@ -146,43 +148,34 @@ async function guarded(fn: () => Promise<void>): Promise<void> {
   }
 }
 
-interface ActionButton extends vscode.QuickInputButton {
-  run: () => Promise<void>;
+async function showPanel(): Promise<void> {
+  openPanel(await withState(), (a) => guarded(() => onPanelAction(a)));
 }
 
-async function menu(): Promise<void> {
+async function onPanelAction(a: Action): Promise<void> {
   const list = await withState();
-  if (!list.length) {
-    return addShare();
+  const row = list.find((r) => r.share.mountPoint === a.mountPoint);
+  switch (a.cmd) {
+    case 'add':
+      return addShare();
+    case 'mountAll':
+      return runAll(list.filter((r) => !r.mounted).map((r) => r.share), mount);
+    case 'refresh':
+      return; // guarded() selalu refresh di akhir
   }
-  const buttons: ActionButton[] = [
-    { iconPath: new vscode.ThemeIcon('add'), tooltip: 'Add share', run: addShare },
-    { iconPath: new vscode.ThemeIcon('edit'), tooltip: 'Edit share', run: () => editShare(shares()) },
-    { iconPath: new vscode.ThemeIcon('trash'), tooltip: 'Remove share', run: () => removeShare(shares()) },
-    { iconPath: new vscode.ThemeIcon('pulse'), tooltip: 'Show status', run: showStatus },
-  ];
-  const qp = vscode.window.createQuickPick<vscode.QuickPickItem & (typeof list)[number]>();
-  qp.title = 'WSL Share Mount';
-  qp.placeholder = 'Select share(s) to mount / unmount, or use the buttons to add / edit / remove';
-  qp.canSelectMany = true;
-  qp.buttons = buttons;
-  qp.items = list.map((s) => ({
-    label: `${s.mounted ? '$(debug-disconnect) Unmount' : '$(plug) Mount'} ${s.share.name}`,
-    description: s.share.mountPoint,
-    detail: s.share.share,
-    ...s,
-  }));
-  const choice = await new Promise<{ button?: ActionButton; picked?: (typeof list)[number][] }>((resolve) => {
-    qp.onDidTriggerButton((button) => resolve({ button: button as ActionButton }));
-    qp.onDidAccept(() => resolve({ picked: [...qp.selectedItems] }));
-    qp.onDidHide(() => resolve({}));
-    qp.show();
-  });
-  qp.dispose();
-  if (choice.button) {
-    return choice.button.run();
+  if (!row) {
+    return; // share sudah dihapus/diubah dari tempat lain; panel di-render ulang oleh refresh.
   }
-  await runAll(choice.picked ?? [], (s, ask) => (s.mounted ? unmount(s.share, ask) : mount(s.share, ask)));
+  switch (a.cmd) {
+    case 'mount':
+      return runAll([row.share], mount);
+    case 'unmount':
+      return runAll([row.share], unmount);
+    case 'edit':
+      return editShare(shares(), row.share);
+    case 'remove':
+      return removeShare(shares(), row.share);
+  }
 }
 
 async function showStatus(): Promise<void> {

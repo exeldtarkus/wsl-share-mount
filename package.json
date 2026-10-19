@@ -2,7 +2,7 @@
   "name": "wsl-share-mount",
   "displayName": "WSL Share Mount",
   "description": "Mount Windows SMB shares into WSL (drvfs) using the current Windows login, without storing passwords.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "exeltarkus",
   "license": "MIT",
   "repository": {
@@ -26,7 +26,7 @@
     "commands": [
       {
         "command": "wslShareMount.menu",
-        "title": "Mount / Unmount Share",
+        "title": "Open Share Manager",
         "category": "WSL Share Mount"
       },
       {

@@ -109,8 +109,8 @@ export async function addShare(): Promise<void> {
   }
 }
 
-export async function editShare(list: Share[]): Promise<void> {
-  const old = await pickShare(list, 'Select a share to edit');
+export async function editShare(list: Share[], target?: Share): Promise<void> {
+  const old = target ?? (await pickShare(list, 'Select a share to edit'));
   if (!old || !(await ensureNotMounted(old))) {
     return;
   }
@@ -121,8 +121,8 @@ export async function editShare(list: Share[]): Promise<void> {
   }
 }
 
-export async function removeShare(list: Share[]): Promise<void> {
-  const old = await pickShare(list, 'Select a share to remove');
+export async function removeShare(list: Share[], target?: Share): Promise<void> {
+  const old = target ?? (await pickShare(list, 'Select a share to remove'));
   if (!old || !(await ensureNotMounted(old))) {
     return;
   }
