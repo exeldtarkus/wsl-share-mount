@@ -7,3 +7,6 @@ scripts/**
 docs/**
 .gitignore
 deployment/**
+node_modules/**
+images/*.svg
+images/screenshots/**

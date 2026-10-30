@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f4c81"/><stop offset="1" stop-color="#0a1a33"/></linearGradient>
+    <linearGradient id="folder" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
+  <rect x="4.5" y="4.5" width="119" height="119" rx="27.5" fill="none" stroke="#fff" stroke-opacity=".12"/>
+  <!-- network share (server) -->
+  <g transform="translate(20 22)">
+    <rect width="40" height="14" rx="3" fill="#38bdf8"/>
+    <rect y="18" width="40" height="14" rx="3" fill="#0ea5e9"/>
+    <circle cx="32" cy="7" r="2.5" fill="#34d399"/>
+    <circle cx="32" cy="25" r="2.5" fill="#34d399"/>
+    <rect x="6" y="5.5" width="16" height="3" rx="1.5" fill="#0a1a33" opacity=".5"/>
+    <rect x="6" y="23.5" width="16" height="3" rx="1.5" fill="#0a1a33" opacity=".5"/>
+  </g>
+  <!-- link -->
+  <path d="M40 56 V70 Q40 78 48 78 H58" fill="none" stroke="#e2e8f0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M56 71 L65 78 L56 85 Z" fill="#e2e8f0"/>
+  <!-- WSL folder with prompt -->
+  <g transform="translate(64 60)">
+    <path d="M0 6 Q0 2 4 2 H16 L21 8 H40 Q44 8 44 12 V40 Q44 44 40 44 H4 Q0 44 0 40 Z" fill="url(#folder)"/>
+    <path d="M10 22 L17 27 L10 32" fill="none" stroke="#0a1a33" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="21" y="30" width="13" height="3.5" rx="1.75" fill="#0a1a33"/>
+  </g>
+</svg>

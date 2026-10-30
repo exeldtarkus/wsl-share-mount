@@ -2,9 +2,10 @@
   "name": "wsl-share-mount",
   "displayName": "WSL Share Mount",
   "description": "Mount Windows SMB shares into WSL (drvfs) using the current Windows login, without storing passwords.",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "publisher": "exeltarkus",
   "license": "MIT",
+  "icon": "images/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/exeldtarkus/wsl-share-mount.git"
@@ -125,7 +126,8 @@
     "test": "npm run compile && node --test out/test/*.test.js",
     "package": "vsce package --skip-license",
     "install:local": "node scripts/install-local.js",
-    "deploy": "node scripts/deploy.js"
+    "deploy": "node scripts/deploy.js",
+    "screenshots": "npm run compile && node scripts/screenshots.js"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
@@ -133,5 +135,14 @@
     "@vscode/vsce": "^4.0.0",
     "ovsx": "^1.2.0",
     "typescript": "^5.4.0"
-  }
+  },
+  "keywords": [
+    "wsl",
+    "smb",
+    "cifs",
+    "drvfs",
+    "network share",
+    "mount",
+    "windows"
+  ]
 }
